@@ -1,0 +1,4 @@
+# TODO
+ * List requirements (pycrypto, hashlib)
+ * Add more input types (base64 encoded, hex..)
+ * Add support for hashing files
