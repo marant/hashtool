@@ -47,7 +47,7 @@ class HashCalc(wx.Frame):
         self.input_field = input_field
         vbox.Add((-1,10))
         calc_button = wx.Button(panel, wx.ID_ANY, 'Calculate', (10, 10))
-        self.Bind(wx.EVT_BUTTON, self.SayBoo, id=calc_button.GetId())
+        self.Bind(wx.EVT_BUTTON, self._buttonClicked, id=calc_button.GetId())
         hbox1.Add(calc_button)
 
         line1 = wx.StaticLine(self.panel)
@@ -107,7 +107,7 @@ class HashCalc(wx.Frame):
     def OnQuit(self, e):
         self.Close()
 
-    def SayBoo(self, e):
+    def _buttonClicked(self, e):
         for hashKey, hashTuple in self.hash_fields.iteritems():
             pwd = self.input_field.Value
             hashField = hashTuple[0]
