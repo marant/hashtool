@@ -6,7 +6,9 @@ import zlib
 from Crypto.Hash import MD2, MD4, RIPEMD
 import tiger
 import binascii
+import base64
 
+INPUT_TYPES = ["ASCII", "Base64", "Hex"]
 
 class HashCalc(wx.Frame):
     def __init__(self, *args, **kwargs):
@@ -16,6 +18,7 @@ class HashCalc(wx.Frame):
         self.salt = None
         self.menubar = None
         self.panel = None
+        self.input_type = None
 
         self.InitUI()
         self.Show(True)
@@ -34,9 +37,9 @@ class HashCalc(wx.Frame):
         self.SetTitle("HashCalc")
 
         self.panel = wx.Panel(self)
-
         self.vbox = wx.BoxSizer(wx.VERTICAL)
 
+        self._initInputTypeComboBox()
         hbox = wx.BoxSizer(wx.HORIZONTAL)
         input_label = wx.StaticText(self.panel, label="Value to hash")
         self.input_field = wx.TextCtrl(self.panel)
@@ -44,11 +47,11 @@ class HashCalc(wx.Frame):
 
         self.Bind(wx.EVT_BUTTON, self._buttonClicked, id=calc_button.GetId())
 
-        hbox.Add(input_label, flag=wx.RIGHT|wx.ALIGN_CENTER_VERTICAL)
-        hbox.Add(self.input_field, proportion=4)
+        hbox.Add(input_label, flag=wx.RIGHT|wx.ALIGN_CENTER_VERTICAL, proportion=1)
+        hbox.Add(self.input_field, proportion=3)
+        hbox.Add(calc_button, proportion=1)
         self.vbox.Add(hbox, flag=wx.EXPAND|wx.LEFT|wx.RIGHT|wx.TOP, border=10)
         self.vbox.Add((-1,10))
-        hbox.Add(calc_button)
 
         line1 = wx.StaticLine(self.panel)
         self.vbox.Add(line1, flag=wx.EXPAND|wx.LEFT|wx.RIGHT, border=10)
@@ -59,6 +62,23 @@ class HashCalc(wx.Frame):
         self.vbox.Add(line2, flag=wx.EXPAND|wx.LEFT|wx.RIGHT|wx.TOP, border=10)
 
         self.panel.SetSizer(self.vbox)
+
+    def _initInputTypeComboBox(self):
+        hbox = wx.BoxSizer(wx.HORIZONTAL)
+        label = wx.StaticText(self.panel, label="Input type")
+
+        cbox = wx.ComboBox(self.panel, choices=INPUT_TYPES, style=wx.CB_READONLY|wx.CB_DROPDOWN)
+        cbox.SetValue(INPUT_TYPES[0])
+        self.input_type = INPUT_TYPES[0] # set chosen input type to default
+        cbox.Bind(wx.EVT_COMBOBOX, self._inputTypeChanged)
+
+        hbox.Add(label, flag=wx.RIGHT|wx.ALIGN_CENTER_VERTICAL, proportion=1)
+        hbox.Add(cbox, flag=wx.LEFT, proportion=4)
+        self.vbox.Add(hbox, flag=wx.EXPAND|wx.LEFT|wx.RIGHT|wx.TOP, border=10)
+
+    def _inputTypeChanged(self, e):
+        self.input_type = e.GetString()
+
 
     def _initHashFields(self):
         self._addHashValue("MD2", self._md2())
@@ -109,8 +129,15 @@ class HashCalc(wx.Frame):
         self.Close()
 
     def _buttonClicked(self, e):
+        pwd = self.input_field.Value
+        if self.input_type == INPUT_TYPES[0]: # ASCII
+            pass
+        elif self.input_type == INPUT_TYPES[1]: # Base64
+            pwd = base64.b64decode(pwd)
+        elif self.input_type == INPUT_TYPES[2]: # Hex
+            pwd = pwd.decode("hex")
+
         for hashKey, hashTuple in self.hash_fields.iteritems():
-            pwd = self.input_field.Value
             hashField = hashTuple[0]
             hashFunc = hashTuple[1]
             hashed = hashFunc(pwd)
