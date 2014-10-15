@@ -40,19 +40,7 @@ class HashCalc(wx.Frame):
         self.vbox = wx.BoxSizer(wx.VERTICAL)
 
         self._initInputTypeComboBox()
-        hbox = wx.BoxSizer(wx.HORIZONTAL)
-        input_label = wx.StaticText(self.panel, label="Value to hash")
-        self.input_field = wx.TextCtrl(self.panel, style=wx.TE_PROCESS_ENTER)
-        calc_button = wx.Button(self.panel, wx.ID_ANY, 'Calculate', (10, 10))
-
-        self.Bind(wx.EVT_BUTTON, self._calculateHashes, id=calc_button.GetId())
-        self.Bind(wx.EVT_TEXT_ENTER, self._calculateHashes, id=self.input_field.GetId())
-
-        hbox.Add(input_label, flag=wx.RIGHT|wx.ALIGN_CENTER_VERTICAL, proportion=1)
-        hbox.Add(self.input_field, proportion=3)
-        hbox.Add(calc_button, proportion=1)
-        self.vbox.Add(hbox, flag=wx.EXPAND|wx.LEFT|wx.RIGHT|wx.TOP, border=10)
-        self.vbox.Add((-1,10))
+        self._initInputField()
 
         line1 = wx.StaticLine(self.panel)
         self.vbox.Add(line1, flag=wx.EXPAND|wx.LEFT|wx.RIGHT, border=10)
@@ -79,6 +67,22 @@ class HashCalc(wx.Frame):
 
     def _inputTypeChanged(self, e):
         self.input_type = e.GetString()
+
+    def _initInputField(self):
+        hbox = wx.BoxSizer(wx.HORIZONTAL)
+        input_label = wx.StaticText(self.panel, label="Value to hash")
+        self.input_field = wx.TextCtrl(self.panel, style=wx.TE_PROCESS_ENTER)
+        calc_button = wx.Button(self.panel, wx.ID_ANY, 'Calculate', (10, 10))
+
+        self.Bind(wx.EVT_BUTTON, self._calculateHashes, id=calc_button.GetId())
+        self.Bind(wx.EVT_TEXT_ENTER, self._calculateHashes, id=self.input_field.GetId())
+
+        hbox.Add(input_label, flag=wx.RIGHT|wx.ALIGN_CENTER_VERTICAL, proportion=1)
+        hbox.Add(self.input_field, proportion=3)
+        hbox.Add(calc_button, proportion=1)
+        self.vbox.Add(hbox, flag=wx.EXPAND|wx.LEFT|wx.RIGHT|wx.TOP, border=10)
+        self.vbox.Add((-1,10))
+
 
 
     def _initHashFields(self):
