@@ -39,20 +39,20 @@ class HashCalc(wx.Frame):
         self.panel = wx.Panel(self)
         self.vbox = wx.BoxSizer(wx.VERTICAL)
 
-        self._initInputTypeComboBox()
-        self._initInputField()
+        self._createInputTypeComboBox()
+        self._createInputField()
 
         line1 = wx.StaticLine(self.panel)
         self.vbox.Add(line1, flag=wx.EXPAND|wx.LEFT|wx.RIGHT, border=10)
 
-        self._initHashFields()
+        self._createHashFields()
 
         line2 = wx.StaticLine(self.panel)
         self.vbox.Add(line2, flag=wx.EXPAND|wx.LEFT|wx.RIGHT|wx.TOP, border=10)
 
         self.panel.SetSizer(self.vbox)
 
-    def _initInputTypeComboBox(self):
+    def _createInputTypeComboBox(self):
         hbox = wx.BoxSizer(wx.HORIZONTAL)
         label = wx.StaticText(self.panel, label="Input type")
 
@@ -68,7 +68,7 @@ class HashCalc(wx.Frame):
     def _inputTypeChanged(self, e):
         self.input_type = e.GetString()
 
-    def _initInputField(self):
+    def _createInputField(self):
         hbox = wx.BoxSizer(wx.HORIZONTAL)
         input_label = wx.StaticText(self.panel, label="Value to hash")
         self.input_field = wx.TextCtrl(self.panel, style=wx.TE_PROCESS_ENTER)
@@ -85,7 +85,7 @@ class HashCalc(wx.Frame):
 
 
 
-    def _initHashFields(self):
+    def _createHashFields(self):
         self._addHashValue("MD2", self._md2())
         self._addHashValue("MD4", self._md4())
         self._addHashValue("MD5", self._hashlib_wrapper(hashlib.md5))
