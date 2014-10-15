@@ -42,10 +42,11 @@ class HashCalc(wx.Frame):
         self._initInputTypeComboBox()
         hbox = wx.BoxSizer(wx.HORIZONTAL)
         input_label = wx.StaticText(self.panel, label="Value to hash")
-        self.input_field = wx.TextCtrl(self.panel)
+        self.input_field = wx.TextCtrl(self.panel, style=wx.TE_PROCESS_ENTER)
         calc_button = wx.Button(self.panel, wx.ID_ANY, 'Calculate', (10, 10))
 
-        self.Bind(wx.EVT_BUTTON, self._buttonClicked, id=calc_button.GetId())
+        self.Bind(wx.EVT_BUTTON, self._calculateHashes, id=calc_button.GetId())
+        self.Bind(wx.EVT_TEXT_ENTER, self._calculateHashes, id=self.input_field.GetId())
 
         hbox.Add(input_label, flag=wx.RIGHT|wx.ALIGN_CENTER_VERTICAL, proportion=1)
         hbox.Add(self.input_field, proportion=3)
@@ -128,14 +129,18 @@ class HashCalc(wx.Frame):
     def OnQuit(self, e):
         self.Close()
 
-    def _buttonClicked(self, e):
+    def _calculateHashes(self, e):
         pwd = self.input_field.Value
-        if self.input_type == INPUT_TYPES[0]: # ASCII
-            pass
-        elif self.input_type == INPUT_TYPES[1]: # Base64
-            pwd = base64.b64decode(pwd)
-        elif self.input_type == INPUT_TYPES[2]: # Hex
-            pwd = pwd.decode("hex")
+        try:
+            if self.input_type == INPUT_TYPES[0]: # ASCII
+                pass
+            elif self.input_type == INPUT_TYPES[1]: # Base64
+                    pwd = base64.b64decode(pwd)
+            elif self.input_type == INPUT_TYPES[2]: # Hex
+                pwd = pwd.decode("hex")
+        except TypeError:
+            wx.MessageBox("Bad input", "Error", wx.OK|wx.ICON_WARNING)
+            return
 
         for hashKey, hashTuple in self.hash_fields.iteritems():
             hashField = hashTuple[0]
