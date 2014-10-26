@@ -101,6 +101,8 @@ class HashCalc(wx.Frame):
         else:
             self.hmac_combobox.Disable()
             self.hmac_key_field.Disable()
+            self.hmac_key_field.Clear()
+            self.hmac_key = ""
 
     def _hmacFormatChanged(self, e):
         self.hmac_format = e.GetString()
