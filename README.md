@@ -1,6 +1,7 @@
 # HashTool
 
-A simple GUI application to generate hashes for arbitrary strings.
+A simple GUI application to generate hashes for arbitrary strings. Tested on 
+Ubuntu 14.04, but should work on all platforms that support wxPython.
 
 Supported hashes:
   * MD2
