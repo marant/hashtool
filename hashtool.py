@@ -40,7 +40,7 @@ class Hasher:
         self.hashfuncs["sha384"] = self._hashSHA384
         self.hashfuncs["sha512"] = self._hashSHA512
         self.hashfuncs["ripemd"] = self._hashRIPEMD
-        self.hashfuncs["tiger"] = self._hashTiger
+        #self.hashfuncs["tiger"] = self._hashTiger
 
     def Hash(self, hashfunc, value, hmacKey=None):
         return self.hashfuncs[hashfunc](value, hmacKey)
@@ -221,6 +221,8 @@ class HashTool(wx.Frame):
         self._addHashValue("SHA-384", lambda value, hmacKey = None: hasher.Hash("sha384", value, hmacKey))
         self._addHashValue("SHA-512", lambda value, hmacKey = None: hasher.Hash("sha512", value, hmacKey))
         self._addHashValue("RIPEMD", lambda value, hmacKey = None: hasher.Hash("ripemd", value, hmacKey))
+
+	# TODO: Make these work with HMAC
         #self._addHashValue("tiger", lambda value, hmacKey = None: hasher.Hash("tiger", value, hmacKey))
         #self._addHashValue("adler32", self._adler32())
         #self._addHashValue("CRC32", self._zlib_wrapper(zlib.crc32))
