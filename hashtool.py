@@ -67,9 +67,9 @@ class Hasher:
         return h.hexdigest()
 
 
-class HashCalc(wx.Frame):
+class HashTool(wx.Frame):
     def __init__(self, *args, **kwargs):
-        super(HashCalc, self).__init__(*args, **kwargs)
+        super(HashTool, self).__init__(*args, **kwargs)
         self.hash_fields = {}
         self.hash_funcs = {}
         self.salt = None
@@ -84,7 +84,7 @@ class HashCalc(wx.Frame):
 
     def InitUI(self):
         self.SetSize(WINDOW_SIZE)
-        self.SetTitle("HashCalc")
+        self.SetTitle("HashTool")
 
         self.panel = wx.Panel(self)
         self.vbox = wx.BoxSizer(wx.VERTICAL)
@@ -274,7 +274,7 @@ class HashCalc(wx.Frame):
 
 def main():
     ex = wx.App()
-    HashCalc(None)
+    HashTool(None)
     ex.MainLoop()
 
 if __name__ == "__main__":
