@@ -1,15 +1,71 @@
 #!/usr/bin/python
 
 import wx
-import hashlib
 import zlib
-from Crypto.Hash import MD2, MD4, RIPEMD
+from Crypto.Hash import MD2, MD4, MD5, SHA, SHA224, SHA256, SHA384, SHA512, RIPEMD, HMAC
 import tiger
 import binascii
 import base64
 
 INPUT_TYPES = ["ASCII", "Base64", "Hex"]
 WINDOW_SIZE = (500,700)
+
+class Hasher:
+    hashfuncs = {}
+
+    def __init__(self):
+        self.hashfuncs["md2"] = self._hashMD2
+        self.hashfuncs["md4"] = self._hashMD4
+        self.hashfuncs["md5"] = self._hashMD5
+        self.hashfuncs["sha"] = self._hashSHA
+        self.hashfuncs["sha224"] = self._hashSHA224
+        self.hashfuncs["sha256"] = self._hashSHA256
+        self.hashfuncs["sha384"] = self._hashSHA384
+        self.hashfuncs["sha512"] = self._hashSHA512
+        self.hashfuncs["ripemd"] = self._hashRIPEMD
+        self.hashfuncs["tiger"] = self._hashTiger
+
+    def Hash(self, hashfunc, value, hmacKey=None):
+        return self.hashfuncs[hashfunc](value, hmacKey)
+
+    def _hashMD2(self, value, hmacKey):
+        return self._cryptolibwrapper(MD2, value, hmacKey)
+
+    def _hashMD4(self, value, hmacKey):
+        return self._cryptolibwrapper(MD4, value, hmacKey)
+    
+    def _hashMD5(self, value, hmacKey):
+        return self._cryptolibwrapper(MD5, value, hmacKey)
+
+    def _hashSHA(self, value, hmacKey):
+        return self._cryptolibwrapper(SHA, value, hmacKey)
+
+    def _hashSHA224(self, value, hmacKey):
+        return self._cryptolibwrapper(SHA224, value, hmacKey)
+
+    def _hashSHA256(self, value, hmacKey):
+        return self._cryptolibwrapper(SHA256, value, hmacKey)
+    
+    def _hashSHA384(self, value, hmacKey):
+        return self._cryptolibwrapper(SHA384, value, hmacKey)
+
+    def _hashSHA512(self, value, hmacKey):
+        return self._cryptolibwrapper(SHA512, value, hmacKey)
+
+    def _hashRIPEMD(self, value, hmacKey):
+        return self._cryptolibwrapper(RIPEMD, value, hmacKey)
+
+    def _hashTiger(self, value, hmacKey):
+        return self._cryptolibwrapper(tiger, value, hmacKey)
+
+    def _cryptolibwrapper(self, alg, value, hmacKey=None):
+        if hmacKey == None:
+            return alg.new(value).hexdigest()
+
+        h = HMAC.new(str(hmacKey), digestmod=alg)
+        h.update(value)
+        return h.hexdigest()
+
 
 class HashCalc(wx.Frame):
     def __init__(self, *args, **kwargs):
@@ -21,6 +77,7 @@ class HashCalc(wx.Frame):
         self.panel = None
         self.input_format = None
         self.hmac_enabled = False
+        self.hmac_key = None
 
         self.InitUI()
         self.Show(True)
@@ -89,7 +146,8 @@ class HashCalc(wx.Frame):
         hbox.Add(self.hmac_combobox, proportion=1)
         hbox.Add(self.hmac_key_field, proportion=3)
 
-        self.Bind(wx.EVT_TEXT_ENTER, self._hmacKeyChanged, id=self.hmac_key_field.GetId())
+        self.Bind(wx.EVT_TEXT, self._hmacKeyChanged, id=self.hmac_key_field.GetId())
+        self.Bind(wx.EVT_TEXT_ENTER, self._calculateHashes, id=self.hmac_key_field.GetId())
 
         self.vbox.Add(hbox, flag=wx.EXPAND|wx.LEFT|wx.RIGHT, border=10)
 
@@ -102,12 +160,13 @@ class HashCalc(wx.Frame):
             self.hmac_combobox.Disable()
             self.hmac_key_field.Disable()
             self.hmac_key_field.Clear()
-            self.hmac_key = ""
+            self.hmac_key = None
 
     def _hmacFormatChanged(self, e):
         self.hmac_format = e.GetString()
+
     def _hmacKeyChanged(self, e):
-        pass
+        self.hmac_key = self.hmac_key_field.Value
 
     def _createInputLabels(self):
         label_hbox = wx.BoxSizer(wx.HORIZONTAL)
@@ -135,18 +194,19 @@ class HashCalc(wx.Frame):
         self.vbox.Add(hbox, flag=wx.EXPAND|wx.LEFT|wx.RIGHT, border=10)
 
     def _createHashFields(self):
-        self._addHashValue("MD2", self._md2())
-        self._addHashValue("MD4", self._md4())
-        self._addHashValue("MD5", self._hashlib_wrapper(hashlib.md5))
-        self._addHashValue("SHA1", self._hashlib_wrapper(hashlib.sha1))
-        self._addHashValue("SHA224", self._hashlib_wrapper(hashlib.sha224))
-        self._addHashValue("SHA256", self._hashlib_wrapper(hashlib.sha256))
-        self._addHashValue("SHA384", self._hashlib_wrapper(hashlib.sha384))
-        self._addHashValue("SHA512", self._hashlib_wrapper(hashlib.sha512))
-        self._addHashValue("RIPEMD", self._ripemd())
-        self._addHashValue("tiger", self._tiger())
-        self._addHashValue("adler32", self._adler32())
-        self._addHashValue("CRC32", self._zlib_wrapper(zlib.crc32))
+        hasher = Hasher()
+        self._addHashValue("MD2", lambda value, hmacKey = None: hasher.Hash("md2", value, hmacKey))
+        self._addHashValue("MD4", lambda value, hmacKey = None: hasher.Hash("md4", value, hmacKey))
+        self._addHashValue("MD5", lambda value, hmacKey = None: hasher.Hash("md5", value, hmacKey))
+        self._addHashValue("SHA-1", lambda value, hmacKey = None: hasher.Hash("sha", value, hmacKey))
+        self._addHashValue("SHA-224", lambda value, hmacKey = None: hasher.Hash("sha224", value, hmacKey))
+        self._addHashValue("SHA-256", lambda value, hmacKey = None: hasher.Hash("sha256", value, hmacKey))
+        self._addHashValue("SHA-384", lambda value, hmacKey = None: hasher.Hash("sha384", value, hmacKey))
+        self._addHashValue("SHA-512", lambda value, hmacKey = None: hasher.Hash("sha512", value, hmacKey))
+        self._addHashValue("RIPEMD", lambda value, hmacKey = None: hasher.Hash("ripemd", value, hmacKey))
+        #self._addHashValue("tiger", lambda value, hmacKey = None: hasher.Hash("tiger", value, hmacKey))
+        #self._addHashValue("adler32", self._adler32())
+        #self._addHashValue("CRC32", self._zlib_wrapper(zlib.crc32))
 
     def _addHashValue(self, hashName, hashFunc):
         hbox = wx.BoxSizer(wx.HORIZONTAL)
@@ -166,39 +226,35 @@ class HashCalc(wx.Frame):
         hbox.Add(calc_button, proportion=2)
         self.vbox.Add(hbox, flag=wx.EXPAND|wx.LEFT|wx.RIGHT|wx.TOP, border=10)
 
-    def _hashlib_wrapper(self, f):
-        return lambda secret: f(secret).hexdigest()
-
     def _zlib_wrapper(self, f):
         return lambda secret: str(f(secret))
 
     def _adler32(self):
         return lambda secret: hex(zlib.adler32(secret))
 
-    def _md2(self):
-        return lambda secret: MD2.new(secret).hexdigest()
-
-    def _ripemd(self):
-        return lambda secret: RIPEMD.new(secret).hexdigest()
-
-    def _md4(self):
-        return lambda secret: MD4.new(secret).hexdigest()
-
-    def _tiger(self):
-        return lambda secret: tiger.new(secret).hexdigest()
-
     def OnQuit(self, e):
         self.Close()
 
     def _calculateHashes(self, e):
         pwd = self.input_field.Value
+        key = self.hmac_key_field.Value
         try:
+            # check input format
             if self.input_format == INPUT_TYPES[0]: # ASCII
                 pass
             elif self.input_format == INPUT_TYPES[1]: # Base64
-                    pwd = base64.b64decode(pwd)
+                pwd = base64.b64decode(pwd)
             elif self.input_format == INPUT_TYPES[2]: # Hex
                 pwd = pwd.decode("hex")
+
+            # check key format
+            if self.hmac_format == INPUT_TYPES[0]: # ASCII
+                pass
+            elif self.hmac_format == INPUT_TYPES[1]: # Bas64
+                key = base64.b64decode(key)
+            elif self.hmac_format == INPUT_TYPES[2]: # Hex
+                key = key.decode("hex")
+
         except TypeError:
             wx.MessageBox("Bad input", "Error", wx.OK|wx.ICON_WARNING)
             return
@@ -206,7 +262,12 @@ class HashCalc(wx.Frame):
         for hashKey, hashTuple in self.hash_fields.iteritems():
             hashField = hashTuple[0]
             hashFunc = hashTuple[1]
-            hashed = hashFunc(pwd)
+
+            hashed = None
+            if key == None:
+                hashed = hashFunc(pwd)
+            else:
+                hashed = hashFunc(pwd, key)
 
             if hashed != None:
                 hashField.SetValue(hashed)
