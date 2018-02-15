@@ -17,15 +17,14 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
 
-import wx
 import zlib
 from Crypto.Hash import MD2, MD4, MD5, SHA, SHA224, SHA256, SHA384, SHA512, RIPEMD, HMAC
-import tiger
 import binascii
 import base64
 
-INPUT_TYPES = ["ASCII", "Base64", "Hex"]
-WINDOW_SIZE = (500,700)
+import gi
+gi.require_version("Gtk", "3.0")
+from gi.repository import Gtk
 
 class Hasher:
     hashfuncs = {}
@@ -40,7 +39,6 @@ class Hasher:
         self.hashfuncs["sha384"] = self._hashSHA384
         self.hashfuncs["sha512"] = self._hashSHA512
         self.hashfuncs["ripemd"] = self._hashRIPEMD
-        #self.hashfuncs["tiger"] = self._hashTiger
 
     def Hash(self, hashfunc, value, hmacKey=None):
         return self.hashfuncs[hashfunc](value, hmacKey)
@@ -72,9 +70,6 @@ class Hasher:
     def _hashRIPEMD(self, value, hmacKey):
         return self._cryptolibwrapper(RIPEMD, value, hmacKey)
 
-    def _hashTiger(self, value, hmacKey):
-        return self._cryptolibwrapper(tiger, value, hmacKey)
-
     def _cryptolibwrapper(self, alg, value, hmacKey=None):
         if hmacKey == None:
             return alg.new(value).hexdigest()
@@ -84,217 +79,109 @@ class Hasher:
         return h.hexdigest()
 
 
-class HashTool(wx.Frame):
-    def __init__(self, *args, **kwargs):
-        super(HashTool, self).__init__(*args, **kwargs)
-        self.hash_fields = {}
-        self.hash_funcs = {}
-        self.salt = None
-        self.menubar = None
-        self.panel = None
-        self.input_format = None
-        self.hmac_enabled = False
-        self.hmac_key = None
+class MainWindowHandler:
 
-        self.InitUI()
-        self.Show(True)
 
-    def InitUI(self):
-        self.SetSize(WINDOW_SIZE)
-        self.SetTitle("HashTool")
+    def __init__(self, builder):
+        self.builder = builder
+        self.hasher = Hasher()
 
-        self.panel = wx.Panel(self)
-        self.vbox = wx.BoxSizer(wx.VERTICAL)
+        self.input_type = "ASCII"
+        self.hmac_type = "ASCII"
 
-        self._createMenuBar()
-        self._createInputLabels()
-        self._createInputField()
-        self._createHMACLabels()
-        self._createHMACField()
-        self._createLine()
-        self._createHashFields()
-        self._createLine()
-        self._createCalculateButton()
+        # a map of tuples that contain the entry and the associated hashing
+        # function. Key is the name of the hashing algorithm.
+        self.entries = {
+            "md2":    (builder.get_object("entry_md2"), self.hasher._hashMD2),
+            "md4":    (builder.get_object("entry_md4"), self.hasher._hashMD4),
+            "md5":    (builder.get_object("entry_md5"), self.hasher._hashMD5),
+            "sha":    (builder.get_object("entry_sha"), self.hasher._hashSHA),
+            "sha224": (builder.get_object("entry_sha224"), self.hasher._hashSHA224),
+            "sha256": (builder.get_object("entry_sha256"), self.hasher._hashSHA256),
+            "sha384": (builder.get_object("entry_sha384"), self.hasher._hashSHA384),
+            "sha512": (builder.get_object("entry_sha512"), self.hasher._hashSHA512),
+            "ripemd": (builder.get_object("entry_ripemd"), self.hasher._hashRIPEMD),
+        }
 
-        self.panel.SetSizer(self.vbox)
 
-    def _createMenuBar(self):
-        self.menubar = wx.MenuBar()
-        fileMenu = wx.Menu()
-        fitem = fileMenu.Append(wx.ID_EXIT, "Quit", "Quit Application")
-        self.menubar.Append(fileMenu, "&File")
-        self.SetMenuBar(self.menubar)
+    def onCloseApplication(self, *args):
+        Gtk.main_quit(*args)
 
-        self.Bind(wx.EVT_MENU, self.OnQuit, fitem)
 
-    def _inputFormatChanged(self, e):
-        self.input_format = e.GetString()
+    def onHMACChanged(self, hmac_entry):
+        self._calculateHashes()
 
-    def _createLine(self):
-        line = wx.StaticLine(self.panel)
-        self.vbox.Add(line, flag=wx.EXPAND|wx.LEFT|wx.RIGHT|wx.TOP, border=10)
 
-    def _createHMACLabels(self):
-        label_hbox = wx.BoxSizer(wx.HORIZONTAL)
-        key_format_label = wx.StaticText(self.panel, label="Key Format")
-        key_label = wx.StaticText(self.panel, label="Key")
-        label_hbox.AddStretchSpacer(1)
-        label_hbox.Add(key_format_label, proportion=1)
-        label_hbox.Add(key_label, proportion=3)
-        self.vbox.Add(label_hbox, flag=wx.EXPAND|wx.LEFT|wx.RIGHT|wx.TOP, border=10)
+    def onInputChanged(self, entry_input):
+        self._calculateHashes()
 
-    def _createHMACField(self):
-        hbox = wx.BoxSizer(wx.HORIZONTAL)
 
-        hmac_checkbox = wx.CheckBox(self.panel, label="HMAC", style=wx.ALIGN_RIGHT)
-        hmac_checkbox.SetValue(False)
-        hmac_checkbox.Bind(wx.EVT_CHECKBOX, self._toggleHMAC)
+    def onInputTypeChanged(self, combobox_input_type):
+        input_type_index = combobox_input_type.get_active()
+        input_type_model = combobox_input_type.get_model()
+        self.input_type = input_type_model[input_type_index][0]
 
-        self.hmac_combobox = wx.ComboBox(self.panel, choices=INPUT_TYPES, style=wx.CB_READONLY|wx.CB_DROPDOWN)
-        self.hmac_combobox.SetValue(INPUT_TYPES[0])
-        self.hmac_format = INPUT_TYPES[0] # set chosen input format to default
-        self.hmac_combobox.Bind(wx.EVT_COMBOBOX, self._hmacFormatChanged)
+        self._calculateHashes()
 
-        self.hmac_key_field = wx.TextCtrl(self.panel, style=wx.TE_PROCESS_ENTER)
-        self.hmac_key_field.Disable()
-        self.hmac_combobox.Disable()
 
-        hbox.Add(hmac_checkbox, proportion=1)
-        hbox.Add(self.hmac_combobox, proportion=1)
-        hbox.Add(self.hmac_key_field, proportion=3)
+    def onHMACTypeChanged(self, combobox_hmac_type):
+        hmac_type_index = combobox_hmac_type.get_active()
+        hmac_type_model = combobox_hmac_type.get_model()
+        self.hmac_type = hmac_type_model[hmac_type_index][0]
 
-        self.Bind(wx.EVT_TEXT, self._hmacKeyChanged, id=self.hmac_key_field.GetId())
-        self.Bind(wx.EVT_TEXT_ENTER, self._calculateHashes, id=self.hmac_key_field.GetId())
+        self._calculateHashes()
 
-        self.vbox.Add(hbox, flag=wx.EXPAND|wx.LEFT|wx.RIGHT, border=10)
 
-    def _toggleHMAC(self, e):
-        self.hmac_enabled = e.GetEventObject().GetValue()
-        if self.hmac_enabled:
-            self.hmac_combobox.Enable()
-            self.hmac_key_field.Enable()
-        else:
-            self.hmac_combobox.Disable()
-            self.hmac_key_field.Disable()
-            self.hmac_key_field.Clear()
-            self.hmac_key = None
+    def _calculateHashes(self):
+        entry_input = self.builder.get_object("entry_input")
+        entry_hmac = self.builder.get_object("entry_hmac")
 
-    def _hmacFormatChanged(self, e):
-        self.hmac_format = e.GetString()
+        input_type = self.input_type
+        hmac_type = self.hmac_type
 
-    def _hmacKeyChanged(self, e):
-        self.hmac_key = self.hmac_key_field.Value
+        input_text = entry_input.get_text()
+        hmac = None
+        if entry_hmac.get_text() != "":
+            hmac = entry_hmac.get_text()
 
-    def _createInputLabels(self):
-        label_hbox = wx.BoxSizer(wx.HORIZONTAL)
-        key_format_label = wx.StaticText(self.panel, label="Data Format")
-        key_label = wx.StaticText(self.panel, label="Data")
-        label_hbox.AddStretchSpacer(1)
-        label_hbox.Add(key_format_label, proportion=1)
-        label_hbox.Add(key_label, proportion=3)
-        self.vbox.Add(label_hbox, flag=wx.EXPAND|wx.LEFT|wx.RIGHT|wx.TOP, border=10)
-
-    def _createInputField(self):
-        hbox = wx.BoxSizer(wx.HORIZONTAL)
-        self.input_field = wx.TextCtrl(self.panel, style=wx.TE_PROCESS_ENTER)
-
-        self.Bind(wx.EVT_TEXT_ENTER, self._calculateHashes, id=self.input_field.GetId())
-
-        cbox = wx.ComboBox(self.panel, choices=INPUT_TYPES, style=wx.CB_READONLY|wx.CB_DROPDOWN)
-        cbox.SetValue(INPUT_TYPES[0])
-        self.input_format = INPUT_TYPES[0] # set chosen input format to default
-        cbox.Bind(wx.EVT_COMBOBOX, self._inputFormatChanged)
-
-        hbox.AddStretchSpacer(1)
-        hbox.Add(cbox, flag=wx.LEFT, proportion=1)
-        hbox.Add(self.input_field, proportion=3)
-        self.vbox.Add(hbox, flag=wx.EXPAND|wx.LEFT|wx.RIGHT, border=10)
-
-    def _createHashFields(self):
-        hasher = Hasher()
-        self._addHashValue("MD2", lambda value, hmacKey = None: hasher.Hash("md2", value, hmacKey))
-        self._addHashValue("MD4", lambda value, hmacKey = None: hasher.Hash("md4", value, hmacKey))
-        self._addHashValue("MD5", lambda value, hmacKey = None: hasher.Hash("md5", value, hmacKey))
-        self._addHashValue("SHA-1", lambda value, hmacKey = None: hasher.Hash("sha", value, hmacKey))
-        self._addHashValue("SHA-224", lambda value, hmacKey = None: hasher.Hash("sha224", value, hmacKey))
-        self._addHashValue("SHA-256", lambda value, hmacKey = None: hasher.Hash("sha256", value, hmacKey))
-        self._addHashValue("SHA-384", lambda value, hmacKey = None: hasher.Hash("sha384", value, hmacKey))
-        self._addHashValue("SHA-512", lambda value, hmacKey = None: hasher.Hash("sha512", value, hmacKey))
-        self._addHashValue("RIPEMD", lambda value, hmacKey = None: hasher.Hash("ripemd", value, hmacKey))
-
-	# TODO: Make these work with HMAC
-        #self._addHashValue("tiger", lambda value, hmacKey = None: hasher.Hash("tiger", value, hmacKey))
-        #self._addHashValue("adler32", self._adler32())
-        #self._addHashValue("CRC32", self._zlib_wrapper(zlib.crc32))
-
-    def _addHashValue(self, hashName, hashFunc):
-        hbox = wx.BoxSizer(wx.HORIZONTAL)
-        label = wx.StaticText(self.panel, label=hashName)
-        hbox.Add(label, flag=wx.RIGHT|wx.ALIGN_CENTER_VERTICAL, proportion=1)
-        textField = wx.TextCtrl(self.panel)
-        textField.SetEditable(False)
-        hbox.Add(textField, proportion=4)
-        self.vbox.Add(hbox, flag=wx.EXPAND|wx.LEFT|wx.RIGHT|wx.TOP, border=10)
-        self.hash_fields[hashName] = (textField, hashFunc)
-
-    def _createCalculateButton(self):
-        hbox = wx.BoxSizer(wx.HORIZONTAL)
-        calc_button = wx.Button(self.panel, wx.ID_ANY, 'Calculate', (10, 10))
-        self.Bind(wx.EVT_BUTTON, self._calculateHashes, id=calc_button.GetId())
-        hbox.AddStretchSpacer(4)
-        hbox.Add(calc_button, proportion=2)
-        self.vbox.Add(hbox, flag=wx.EXPAND|wx.LEFT|wx.RIGHT|wx.TOP, border=10)
-
-    def _zlib_wrapper(self, f):
-        return lambda secret: str(f(secret))
-
-    def _adler32(self):
-        return lambda secret: hex(zlib.adler32(secret))
-
-    def OnQuit(self, e):
-        self.Close()
-
-    def _calculateHashes(self, e):
-        pwd = self.input_field.Value
-        key = self.hmac_key_field.Value
         try:
-            # check input format
-            if self.input_format == INPUT_TYPES[0]: # ASCII
-                pass
-            elif self.input_format == INPUT_TYPES[1]: # Base64
-                pwd = base64.b64decode(pwd)
-            elif self.input_format == INPUT_TYPES[2]: # Hex
-                pwd = pwd.decode("hex")
+            if input_type != "ASCII":
+                input_text = self._convertText(input_text, input_type)
+            if hmac_type != "ASCII" and hmac is not None:
+                hmac = self._convertText(hmac, hmac_type)
+        except TypeError as e:
+            # if we don't do this the program won't quit cleanly for some
+            # reason if there have been any exceptions.
+            pass
 
-            # check key format
-            if self.hmac_format == INPUT_TYPES[0]: # ASCII
-                pass
-            elif self.hmac_format == INPUT_TYPES[1]: # Bas64
-                key = base64.b64decode(key)
-            elif self.hmac_format == INPUT_TYPES[2]: # Hex
-                key = key.decode("hex")
+        for _,(entry, f) in self.entries.iteritems():
 
-        except TypeError:
-            wx.MessageBox("Bad input", "Error", wx.OK|wx.ICON_WARNING)
-            return
+            if input_text == "":
+                entry.set_text("")
+                continue
 
-        for hashKey, hashTuple in self.hash_fields.iteritems():
-            hashField = hashTuple[0]
-            hashFunc = hashTuple[1]
+            entry.set_text(f(input_text, hmac))
 
-            hashed = None
-            if key == None:
-                hashed = hashFunc(pwd)
-            else:
-                hashed = hashFunc(pwd, key)
+    def _convertText(self, text, text_type):
+        if text_type == "Base64":
+            return base64.b64decode(text)
+        elif text_type == "Hex":
+            return text.decode("hex")
+        else:
+            Exception("This should not happen")
 
-            if hashed != None:
-                hashField.SetValue(hashed)
+
+
 
 def main():
-    ex = wx.App()
-    HashTool(None)
-    ex.MainLoop()
+    builder = Gtk.Builder()
+    builder.add_from_file("./hashtool.glade")
+    builder.connect_signals(MainWindowHandler(builder))
+
+    window = builder.get_object("mainwindow")
+    window.show_all()
+
+    Gtk.main()
 
 if __name__ == "__main__":
     main()
