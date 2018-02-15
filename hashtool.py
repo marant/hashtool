@@ -26,6 +26,7 @@ import gi
 gi.require_version("Gtk", "3.0")
 from gi.repository import Gtk
 
+
 class Hasher:
     hashfuncs = {}
 
@@ -171,8 +172,6 @@ class MainWindowHandler:
             Exception("This should not happen")
 
 
-
-
 def main():
     builder = Gtk.Builder()
     builder.add_from_file("./hashtool.glade")
@@ -182,6 +181,7 @@ def main():
     window.show_all()
 
     Gtk.main()
+
 
 if __name__ == "__main__":
     main()
